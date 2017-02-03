@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<title>RMU Merit Badge College Checkout</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script type="text/javascript" src="node_modules/jquery.cardswipe/dist/jquery.cardswipe.js"></script>
+	<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+	<link rel="stylesheet" type="text/css" href="css/site.css" />
+	<script type="text/javascript" src="js/site.js"></script>
+	<script type="text/javascript">
+  		Stripe.setPublishableKey('{{stripe publishable key here}}');
+		$(function() {
+			var $form = $('#payment-form');
+			$form.submit(function(event) {
+				// Disable the submit button to prevent repeated clicks:
+				$form.find('.submit').prop('disabled', true);
+				// Request a token from Stripe:
+				Stripe.card.createToken($form, stripeResponseHandler);
+
+				// Prevent the form from being submitted:
+				return false;
+			});
+		});
+
+		function stripeResponseHandler(status, response) {
+  // Grab the form:
+  var $form = $('#payment-form');
+
+  if (response.error) { // Problem!
+
+    // Show the errors on the form:
+    $form.find('.payment-errors').text(response.error.message);
+    $form.find('.submit').prop('disabled', false); // Re-enable submission
+
+  } else { // Token was created!
+
+    // Get the token ID:
+    var token = response.id;
+
+    // Insert the token ID into the form so it gets submitted to the server:
+    $form.append($('<input type="hidden" name="stripeToken">').val(token));
+
+    // Submit the form:
+    $form.get(0).submit();
+  }
+};
+
+	</script>
+</head>
+<body>
+	<div id="pagecontent">
+		<h1 style="text-align: center;">RMU Merit Badge College Checkout</h1>
+ 		<div style="border: .12em solid black; margin: auto;display: block;">
+			<form id="calculate-amount" name="calculate-amount" method="post">
+				<ul style="list-style: none;">
+					<li><label>Spring 2016 Event Participant Shirt - Blue: <input type="text" name="spring16Blue" id="spring16Blue" /></label></li>
+					<li><label>Spring 2016 Event Staff Shirt - Black(scouting professionals and current staff only): <input type="text" name="spring16Black" id="spring16Black" /></label></li>
+					<li><label>Fall 2016 STEM MBC Event Participant Shirt - Red: <input type="text" name="fall16Red" id="fall16Red" /></label></li>
+					<li><label>Fall 2016 STEM MBC Event Staff - Black(scouting professional and current staff only): <input type="text" name="fall16Black" id="fall16Black" /></label></li>
+					<li><label>Spring 2016 Event Patch-round: <input type="text" name="spring16Patch" id="spring16Patch" /></label></li>
+					<li><label>Fall 2016 STEM MBC Event Patch-square: <input type="text" name="fall16Patch" id="fall16Patch" /></label></li>
+					<li><label>ETP Padfolio: <input type="text" name="padfolio" id="padfolio" /></label></li>
+					<li><label>Drinks : <input type="text" name="drinks" id="drinks" /></label></li>
+					<li><label>Lunch: <input type="text" name="lunch" id="lunch" /></label></li>
+				</ul>
+				<input type="submit" value="Calculate Amount" style="display: block;margin:auto;margin-bottom: 1em;" />
+			</form>
+		</div>
+		<div style="border: .2em solid black; margin: auto; display: block;margin-top: .25em;">
+		<form id="payment-form" name="payment-form" method="POST" action="charge.php">
+			<ul>
+				<li><label>Amount Due: <input type="text" name="amount" id="amount" /></label></li>
+				<li><label>First name: <input type="text" name="firstName" id="firstName" /></label></li>
+				<li><label>Last name: <input type="text" name="lastName" id="lastName" /></label></li>
+				<li><label>Card type: <select name="type" id="type">
+					<option value="">(Select card type)</option>
+					<option value="amex">American Express</option>
+					<option value="visa">Visa</option>
+					<option value="discover">Discover</option>
+					<option value="mastercard">MasterCard</option>
+					</select></label></li>
+				<li><label>Card number: <input type="text" name="account" id="account" data-stripe="number" /></label></li>
+				<li>
+					Expiration date:
+					<label>Month: <input type="text" name="expMonth" id="expMonth" size="2" data-stripe="exp_month" /></label>
+					<label>Year: <input type="text" name="expYear" id="expYear" size="2" data-stripe="exp_year" /></label>
+				</li>
+				<li><label>email: <input type="text" name="email" id="email" /></label></li>
+			</ul>
+			<input type="submit" value="Submit Payment" style="display: block;margin: auto;margin-bottom: 1em;" />
+		</form>
+		</div>
+
+	</div>
+
+	<!-- A modal-style message that appears while scanning -->
+	<div id="overlay">
+		<div id="scanning" class="dialog">
+			<p>Scanning...</p>
+		</div>
+	</div>
+
+	<div id="failure" class="dialog">
+		<p>Unrecognized card.</p>
+	</div>
+
+	<div id="success" class="dialog">
+		<p>Successful scan!</p>
+
+		<!-- <div id="properties"> -->
+
+		</div>
+	</div>
+
+	<script type="text/javascript">
+
+		// Called by plugin on a successful scan.
+		var complete = function (data) {
+
+			// Is it a payment card?
+			if (data.type == "generic")
+				return;
+
+			// Copy data fields to form
+			$("#firstName").val(data.firstName);
+			$("#lastName").val(data.lastName);
+			$("#account").val(data.account);
+			$("#expMonth").val(data.expMonth);
+			$("#expYear").val(data.expYear);
+			$("#type").val(data.type);
+
+		};
+
+		// Event handler for scanstart.cardswipe.
+		var scanstart = function () {
+			$("#overlay").fadeIn(200);
+		};
+
+		// Event handler for scanend.cardswipe.
+		var scanend = function () {
+			$("#overlay").fadeOut(200);
+		};
+
+		// Event handler for success.cardswipe.  Displays returned data in a dialog
+		var success = function (event, data) {
+
+			$("#properties").empty();
+
+			// Iterate properties of parsed data
+			for (var key in data) {
+				if (data.hasOwnProperty(key)) {
+					var text = key + ': ' + data[key];
+					$("#properties").append('<div class="property">' + text + '</div>');
+				}
+			}
+
+
+			$("#success").fadeIn().delay(3000).fadeOut();
+		}
+
+		var failure = function () {
+			$("#failure").fadeIn().delay(1000).fadeOut();
+		}
+
+
+
+		// Initialize the plugin with default parser and callbacks.
+		//
+		// Set debug to true to watch the characters get captured and the state machine transitions
+		// in the javascript console. This requires a browser that supports the console.log function.
+		//
+		// Set firstLineOnly to true to invoke the parser after scanning the first line. This will speed up the
+		// time from the start of the scan to invoking your success callback.
+		$.cardswipe({
+			firstLineOnly: false,
+			success: complete,
+			parsers: ["discover", "visa", "amex", "mastercard"],
+			debug: false
+		});
+
+		// Bind event listeners to the document
+		$(document)
+			.on("scanstart.cardswipe", scanstart)
+			.on("scanend.cardswipe", scanend)
+			.on("success.cardswipe", success)
+			.on("failure.cardswipe", failure)
+		;
+	</script>
+</body>
+
+</html>
